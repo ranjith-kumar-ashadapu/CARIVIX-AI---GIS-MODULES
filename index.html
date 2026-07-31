@@ -2,46 +2,115 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>GIS Boundary Integration & Rendering Test</title>
-  <!-- 1. Load MapLibre CSS -->
-  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <title>GIS Web Platform - Search, Filter & Spatial Hierarchy (Leaflet)</title>
 
-  <!-- 2. Load MapLibre JavaScript -->
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <!-- 1. Leaflet Core CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- 2. Leaflet Heatmap Plugin -->
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+  <!-- 3. Leaflet MarkerCluster CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
   <style>
-    body { margin: 0; padding: 0; font-family: sans-serif; }
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    
+    /* Search & Filter Control Panel (Top-Left) */
+    #search-menu {
+      position: absolute; top: 10px; left: 10px; z-index: 1000;
+      background: #ffffff; padding: 12px 16px; border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      width: 260px;
+    }
+    #search-menu h4 { margin: 0 0 8px 0; font-size: 14px; color: #1a1a1a; }
+    .filter-group { margin-bottom: 8px; }
+    .filter-group label { display: block; font-size: 11px; font-weight: bold; color: #666; text-transform: uppercase; margin-bottom: 3px; }
+    .filter-input, .filter-select {
+      width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px;
+      font-size: 13px; box-sizing: border-box; outline: none;
+    }
+    .filter-input:focus, .filter-select:focus { border-color: #0078A8; }
+
+    /* Layer Controls Panel & Legend (Bottom-Left) */
     #layer-menu {
-      position: absolute; top: 10px; left: 10px; z-index: 1;
-      background: #fff; padding: 14px 18px; border-radius: 6px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      line-height: 1.6;
-      font-size: 13px;
-      min-width: 170px;
+      position: absolute; bottom: 15px; left: 10px; z-index: 1000;
+      background: #ffffff; padding: 14px 18px; border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      line-height: 1.6; font-size: 13px; min-width: 190px;
     }
+    .legend-header {
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; margin-bottom: 8px;
+    }
+    .north-arrow-container {
+      display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: bold; color: #333;
+    }
+    .north-arrow-svg { width: 18px; height: 18px; }
+
     .zoom-display {
-      margin-top: 8px;
-      padding-top: 6px;
-      border-top: 1px solid #ddd;
-      font-weight: bold;
-      color: #2b2b2b;
+      margin-top: 8px; padding-top: 6px; border-top: 1px solid #ddd;
+      font-weight: bold; color: #2b2b2b; font-size: 12px;
     }
+
+    /* Spatial Hierarchy Popup Styling */
+    .gis-popup { font-size: 13px; line-height: 1.5; min-width: 180px; }
+    .gis-popup h4 {
+      margin: 0 0 8px 0; padding-bottom: 4px; border-bottom: 2px solid #0078A8;
+      color: #111; font-size: 14px;
+    }
+    .gis-popup-row { margin-bottom: 4px; display: flex; justify-content: space-between; gap: 10px; }
+    .gis-popup-label { font-weight: bold; color: #555; }
+    .gis-popup-value { color: #111; font-weight: 500; text-align: right; }
   </style>
 </head>
 <body>
 
-<div id="layer-menu">
-  <strong>Layer Controls</strong><br>
-  <input type="checkbox" id="toggle-states" checked>
-  <label for="toggle-states">States (Level 1)</label><br>
-  <input type="checkbox" id="toggle-districts" checked>
-  <label for="toggle-districts">Districts (Level 2)</label><br>
-  <input type="checkbox" id="toggle-subdistricts" checked>
-  <label for="toggle-subdistricts">Sub-Districts (Level 3)</label><br>
-  <input type="checkbox" id="toggle-heatmap" checked>
-  <label for="toggle-heatmap">Heatmap & Points</label>
+<!-- Search & Filtering Panel (Top-Left) -->
+<div id="search-menu">
+  <h4>Search & Filter GIS Map</h4>
+  <div class="filter-group">
+    <label for="search-input">Search District / State</label>
+    <input type="text" id="search-input" class="filter-input" placeholder="Type location name..." />
+  </div>
+  <div class="filter-group">
+    <label for="state-filter">Filter by State</label>
+    <select id="state-filter" class="filter-select">
+      <option value="ALL">All States & Territories</option>
+    </select>
+  </div>
+</div>
 
-  <!-- Dynamic Zoom Display -->
+<!-- Layer Controls & Legend Panel (Bottom-Left) -->
+<div id="layer-menu">
+  <div class="legend-header">
+    <strong>Layer Controls</strong>
+    <!-- North Arrow Marker Legend -->
+    <div class="north-arrow-container" title="North Direction Indicator">
+      <svg class="north-arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M12 2L19 21L12 17L5 21L12 2Z" fill="#e63946" stroke="#111" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+      <span>N</span>
+    </div>
+  </div>
+
+  <input type="checkbox" id="toggle-l0" checked>
+  <label for="toggle-l0">Nation (Level 0)</label><br>
+  <input type="checkbox" id="toggle-l1" checked>
+  <label for="toggle-l1">State (Level 1)</label><br>
+  <input type="checkbox" id="toggle-l2" checked>
+  <label for="toggle-l2">District (Level 2)</label><br>
+  <input type="checkbox" id="toggle-l3" checked>
+  <label for="toggle-l3">Sub-District (Level 3)</label><br>
+  <input type="checkbox" id="toggle-cluster" checked>
+  <label for="toggle-cluster">Marker Clusters</label><br>
+  <input type="checkbox" id="toggle-heatmap" checked>
+  <label for="toggle-heatmap">Heatmap Density</label>
+
   <div class="zoom-display">
     Zoom Level: <span id="zoom-level">7.0</span>
   </div>
@@ -50,162 +119,248 @@
 <div id="map"></div>
 
 <script>
-  const map = new maplibregl.Map({
-    container: 'map',
-    style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-    center: [79.0193, 18.1124], // Center of Telangana
-    zoom: 7
+  // Initialize Leaflet Map with Zoom Control on Top-Right
+  const map = L.map('map', {
+    center: [18.1124, 79.0193], // Center on Telangana
+    zoom: 7,
+    zoomControl: false,          // Disable default top-left position
+    zoomSnap: 0.25,
+    zoomDelta: 0.25,
+    wheelPxPerZoomLevel: 120,
+    zoomAnimation: true
   });
 
-  map.addControl(new maplibregl.NavigationControl(), 'top-right');
+  // Position Zoom Control to Top-Right
+  L.control.zoom({ position: 'topright' }).addTo(map);
 
-  map.on('load', () => {
-  // 1. Level 3: Sub-Districts
-  map.addSource('subdistricts', {
-    type: 'geojson',
-    data: 'http://localhost:8000/api/v1/boundaries/3'
+  // Base Map Layer
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap &copy; CARTO'
+  }).addTo(map);
+
+  // Initialize Layer Groups
+  const layerL0 = L.layerGroup().addTo(map);
+  const layerL1 = L.layerGroup().addTo(map);
+  const layerL2 = L.layerGroup().addTo(map);
+  const layerL3 = L.layerGroup().addTo(map);
+  const layerHeatmap = L.layerGroup().addTo(map);
+
+  // Marker Cluster Group
+  const markerClusterGroup = L.markerClusterGroup({
+    chunkedLoading: true,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true
+  }).addTo(map);
+
+  const API_BASE = 'http://localhost:8000/api/v1';
+
+  // Master Data Cache for Search and Filter Logic
+  let districtGeoJsonLayer = null;
+  let districtDataRaw = null;
+  let stateNamesSet = new Set();
+
+  async function loadGisData() {
+    try {
+      // 1. Level 0: Nation
+      fetch(`${API_BASE}/boundaries/0`)
+        .then(res => res.json())
+        .then(data => {
+          L.geoJSON(data, {
+            style: { color: '#000000', weight: 3, fill: false }
+          }).addTo(layerL0);
+        });
+
+      // 2. Level 1: State
+      fetch(`${API_BASE}/boundaries/1`)
+        .then(res => res.json())
+        .then(data => {
+          L.geoJSON(data, {
+            style: { color: '#111111', weight: 2.5, fill: false }
+          }).addTo(layerL1);
+        });
+
+      // 3. Level 2: District (with Full Spatial Hierarchy Popups & Search Cache)
+      fetch(`${API_BASE}/boundaries/2`)
+        .then(res => res.json())
+        .then(data => {
+          districtDataRaw = data;
+
+          // Populate State Names in Filter Dropdown
+          data.features.forEach(feat => {
+            const stateName = feat.properties?.NAME_1;
+            if (stateName) stateNamesSet.add(stateName);
+          });
+          populateStateDropdown(Array.from(stateNamesSet).sort());
+
+          // Render Layer
+          renderDistrictLayer(data);
+        });
+
+      // 4. Level 3: Sub-District
+      fetch(`${API_BASE}/boundaries/3`)
+        .then(res => res.json())
+        .then(data => {
+          L.geoJSON(data, {
+            style: { color: '#7570b3', weight: 0.8, dashArray: '2, 2', fill: false },
+            onEachFeature: (feature, layer) => {
+              const props = feature.properties || {};
+              // Full Spatial Hierarchy Popup for Sub-Districts
+              const popupContent = `
+                <div class="gis-popup">
+                  <h4>Spatial Hierarchy</h4>
+                  <div class="gis-popup-row"><span class="gis-popup-label">Sub-District:</span> <span class="gis-popup-value">${props.NAME_3 || 'N/A'}</span></div>
+                  <div class="gis-popup-row"><span class="gis-popup-label">District:</span> <span class="gis-popup-value">${props.NAME_2 || 'N/A'}</span></div>
+                  <div class="gis-popup-row"><span class="gis-popup-label">State:</span> <span class="gis-popup-value">${props.NAME_1 || 'N/A'}</span></div>
+                  <div class="gis-popup-row"><span class="gis-popup-label">Nation:</span> <span class="gis-popup-value">${props.NAME_0 || 'India'}</span></div>
+                </div>
+              `;
+              layer.bindPopup(popupContent);
+            }
+          }).addTo(layerL3);
+        });
+
+      // 5. Sample Points & Heatmap
+      fetch(`${API_BASE}/points/sample`)
+        .then(res => res.json())
+        .then(data => {
+          const pointLayer = L.geoJSON(data, {
+            pointToLayer: (feature, latlng) => {
+              return L.circleMarker(latlng, {
+                radius: 7, fillColor: '#e63946', color: '#ffffff', weight: 1.5, fillOpacity: 0.85
+              });
+            },
+            onEachFeature: (feature, layer) => {
+              const props = feature.properties || {};
+              const popupContent = `
+                <div class="gis-popup">
+                  <h4>Spatial Point Feature</h4>
+                  <div class="gis-popup-row"><span class="gis-popup-label">Name:</span> <span class="gis-popup-value">${props.name || 'Point'}</span></div>
+                  <div class="gis-popup-row"><span class="gis-popup-label">Density Weight:</span> <span class="gis-popup-value">${props.weight || 1}</span></div>
+                </div>
+              `;
+              layer.bindPopup(popupContent);
+            }
+          });
+
+          markerClusterGroup.addLayer(pointLayer);
+
+          const heatPoints = data.features.map(f => [
+            f.geometry.coordinates[1], f.geometry.coordinates[0], f.properties.weight || 1
+          ]);
+          L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 10 }).addTo(layerHeatmap);
+        });
+
+    } catch (err) {
+      console.error('Error loading GIS data:', err);
+    }
+  }
+
+  // Render District Layer helper function
+  function renderDistrictLayer(geoJsonData) {
+    layerL2.clearLayers();
+    districtGeoJsonLayer = L.geoJSON(geoJsonData, {
+      style: { color: '#d95f02', weight: 1.5, fillColor: '#ff7800', fillOpacity: 0.12 },
+      onEachFeature: (feature, layer) => {
+        const props = feature.properties || {};
+        // Full Spatial Hierarchy Popup Information
+        const popupContent = `
+          <div class="gis-popup">
+            <h4>Spatial Hierarchy Info</h4>
+            <div class="gis-popup-row"><span class="gis-popup-label">Sub-District:</span> <span class="gis-popup-value">${props.NAME_3 || 'N/A'}</span></div>
+            <div class="gis-popup-row"><span class="gis-popup-label">District:</span> <span class="gis-popup-value">${props.NAME_2 || 'N/A'}</span></div>
+            <div class="gis-popup-row"><span class="gis-popup-label">State:</span> <span class="gis-popup-value">${props.NAME_1 || 'N/A'}</span></div>
+            <div class="gis-popup-row"><span class="gis-popup-label">Nation:</span> <span class="gis-popup-value">${props.NAME_0 || 'India'}</span></div>
+          </div>
+        `;
+        layer.bindPopup(popupContent);
+      }
+    }).addTo(layerL2);
+  }
+
+  // Populate State Filter Options
+  function populateStateDropdown(statesArray) {
+    const select = document.getElementById('state-filter');
+    statesArray.forEach(state => {
+      const opt = document.createElement('option');
+      opt.value = state;
+      opt.textContent = state;
+      select.appendChild(opt);
+    });
+  }
+
+  // NEW TASK: Search and Filter Logic Implementation
+  document.getElementById('state-filter').addEventListener('change', (e) => {
+    const selectedState = e.target.value;
+    if (!districtDataRaw) return;
+
+    if (selectedState === 'ALL') {
+      renderDistrictLayer(districtDataRaw);
+      map.setView([18.1124, 79.0193], 7);
+    } else {
+      const filteredFeatures = districtDataRaw.features.filter(
+        f => f.properties?.NAME_1 === selectedState
+      );
+      const filteredGeoJson = { type: 'FeatureCollection', features: filteredFeatures };
+      renderDistrictLayer(filteredGeoJson);
+
+      // Fit map view to selected state bounds
+      if (filteredFeatures.length > 0) {
+        const tempLayer = L.geoJSON(filteredGeoJson);
+        map.fitBounds(tempLayer.getBounds(), { padding: [20, 20] });
+      }
+    }
   });
 
-    map.addLayer({
-      id: 'subdistricts-outline',
-      type: 'line',
-      source: 'subdistricts',
-      paint: {
-        'line-color': '#7570b3',
-        'line-width': 0.8,
-        'line-dasharray': [2, 2]
+  // Text Search Bar Filter
+  document.getElementById('search-input').addEventListener('input', (e) => {
+    const query = e.target.value.trim().toLowerCase();
+    if (!districtGeoJsonLayer || query.length < 2) return;
+
+    let matchedLayer = null;
+    districtGeoJsonLayer.eachLayer(layer => {
+      const props = layer.feature.properties || {};
+      const districtName = (props.NAME_2 || '').toLowerCase();
+      const stateName = (props.NAME_1 || '').toLowerCase();
+
+      if (districtName.includes(query) || stateName.includes(query)) {
+        if (!matchedLayer) matchedLayer = layer;
       }
     });
 
-    // 2. Level 2: Districts
-  map.addSource('telangana-districts', {
-    type: 'geojson',
-    data: 'http://localhost:8000/api/v1/boundaries/2'
+    if (matchedLayer) {
+      map.flyToBounds(matchedLayer.getBounds(), { maxZoom: 10, duration: 1.2 });
+      matchedLayer.openPopup();
+    }
   });
 
-    map.addLayer({
-      id: 'districts-fill',
-      type: 'fill',
-      source: 'telangana-districts',
-      paint: {
-        'fill-color': '#ff7800',
-        'fill-opacity': 0.15
-      }
-    });
+  loadGisData();
 
-    map.addLayer({
-      id: 'districts-outline',
-      type: 'line',
-      source: 'telangana-districts',
-      paint: {
-        'line-color': '#d95f02',
-        'line-width': 1.5
-      }
-    });
-
-    // 3. Level 1: States
-  map.addSource('state-boundaries', {
-    type: 'geojson',
-    data: 'http://localhost:8000/api/v1/boundaries/1'
+  // Layer Checkbox Listeners
+  document.getElementById('toggle-l0').addEventListener('change', (e) => {
+    e.target.checked ? map.addLayer(layerL0) : map.removeLayer(layerL0);
+  });
+  document.getElementById('toggle-l1').addEventListener('change', (e) => {
+    e.target.checked ? map.addLayer(layerL1) : map.removeLayer(layerL1);
+  });
+  document.getElementById('toggle-l2').addEventListener('change', (e) => {
+    e.target.checked ? map.addLayer(layerL2) : map.removeLayer(layerL2);
+  });
+  document.getElementById('toggle-l3').addEventListener('change', (e) => {
+    e.target.checked ? map.addLayer(layerL3) : map.removeLayer(layerL3);
+  });
+  document.getElementById('toggle-cluster').addEventListener('change', (e) => {
+    e.target.checked ? map.addLayer(markerClusterGroup) : map.removeLayer(markerClusterGroup);
+  });
+  document.getElementById('toggle-heatmap').addEventListener('change', (e) => {
+    e.target.checked ? map.addLayer(layerHeatmap) : map.removeLayer(layerHeatmap);
   });
 
-    map.addLayer({
-      id: 'states-outline',
-      type: 'line',
-      source: 'state-boundaries',
-      paint: {
-        'line-color': '#111111',
-        'line-width': 2.5
-      }
-    });
-
-    // 4. Sample Points & Heatmap
-  map.addSource('sample-points', {
-    type: 'geojson',
-    data: 'http://localhost:8000/api/v1/points/sample'
-  });
-
-    // Heatmap Layer
-    map.addLayer({
-      id: 'heatmap-layer',
-      type: 'heatmap',
-      source: 'sample-points',
-      paint: {
-        'heatmap-weight': ['interpolate', ['linear'], ['get', 'weight'], 0, 0, 10, 1],
-        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 15, 3],
-        'heatmap-color': [
-          'interpolate', ['linear'], ['heatmap-density'],
-          0, 'rgba(0, 0, 255, 0)',
-          0.2, 'rgb(103, 169, 207)',
-          0.4, 'rgb(209, 229, 240)',
-          0.6, 'rgb(253, 219, 199)',
-          0.8, 'rgb(239, 138, 98)',
-          1, 'rgb(178, 24, 43)'
-        ],
-        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 5, 15, 35],
-        'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0.8, 14, 0]
-      }
-    });
-
-    // Point Marker Layer
-    map.addLayer({
-      id: 'point-marker-layer',
-      type: 'circle',
-      source: 'sample-points',
-      minzoom: 10,
-      paint: {
-        'circle-color': '#e63946',
-        'circle-radius': 6,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#ffffff',
-        'circle-opacity': ['interpolate', ['linear'], ['zoom'], 10, 0, 13, 1]
-      }
-    });
-
-    // 5. Add Click Popups for District Names
-    map.on('click', 'districts-fill', (e) => {
-      const properties = e.features[0].properties;
-      const districtName = properties.NAME_2 || 'Unknown District';
-      const stateName = properties.NAME_1 || 'Unknown State';
-
-      new maplibregl.Popup()
-        .setLngLat(e.lngLat)
-        .setHTML(`<strong>District:</strong> ${districtName}<br><strong>State:</strong> ${stateName}`)
-        .addTo(map);
-    });
-
-    // Change cursor on hover
-    map.on('mouseenter', 'districts-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
-    map.on('mouseleave', 'districts-fill', () => { map.getCanvas().style.cursor = ''; });
-
-    // 6. Layer Visibility Toggle Listeners
-    document.getElementById('toggle-states').addEventListener('change', (e) => {
-      const visibility = e.target.checked ? 'visible' : 'none';
-      map.setLayoutProperty('states-outline', 'visibility', visibility);
-    });
-
-    document.getElementById('toggle-districts').addEventListener('change', (e) => {
-      const visibility = e.target.checked ? 'visible' : 'none';
-      map.setLayoutProperty('districts-fill', 'visibility', visibility);
-      map.setLayoutProperty('districts-outline', 'visibility', visibility);
-    });
-
-    document.getElementById('toggle-subdistricts').addEventListener('change', (e) => {
-      const visibility = e.target.checked ? 'visible' : 'none';
-      map.setLayoutProperty('subdistricts-outline', 'visibility', visibility);
-    });
-
-    document.getElementById('toggle-heatmap').addEventListener('change', (e) => {
-      const visibility = e.target.checked ? 'visible' : 'none';
-      map.setLayoutProperty('heatmap-layer', 'visibility', visibility);
-      map.setLayoutProperty('point-marker-layer', 'visibility', visibility);
-    });
-
-    // 7. Dynamic Zoom Level Indicator Listener
-    const zoomDisplay = document.getElementById('zoom-level');
-    map.on('zoom', () => {
-      zoomDisplay.innerText = map.getZoom().toFixed(1);
-    });
+  // Dynamic Zoom Display Update
+  const zoomDisplay = document.getElementById('zoom-level');
+  map.on('zoom', () => {
+    zoomDisplay.innerText = map.getZoom().toFixed(1);
   });
 </script>
 

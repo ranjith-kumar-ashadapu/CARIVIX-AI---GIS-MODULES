@@ -33,6 +33,6 @@ if __name__ == '__main__':
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     raw_dir = os.path.join(BASE_DIR, 'assets', 'raw_geojson')
     opt_dir = os.path.join(BASE_DIR, 'assets', 'optimized_geojson')
-    input_path = os.path.join(raw_dir, 'gadm41_IND_0.geojson')
-    output_path = os.path.join(opt_dir, 'gadm41_IND_0_opt.geojson')
+    input_path = os.path.join(raw_dir, 'gadm41_IND_1.geojson')
+    output_path = os.path.join(opt_dir, 'gadm41_IND_1_opt.geojson')
     optimize_geojson(input_path, output_path)
