@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>GIS Web Platform - Search, Filter & Spatial Hierarchy (Leaflet)</title>
+  <title>GIS Web Platform - Interactive North & Point Spatial Hierarchy (Leaflet)</title>
 
   <!-- 1. Leaflet Core CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -47,10 +47,16 @@
       display: flex; align-items: center; justify-content: space-between;
       border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; margin-bottom: 8px;
     }
+    
+    /* Interactive North Compass Marker */
     .north-arrow-container {
       display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: bold; color: #333;
+      cursor: pointer; user-select: none; transition: transform 0.2s ease;
+      padding: 2px 4px; border-radius: 4px; background: #f5f5f5; border: 1px solid #ddd;
     }
-    .north-arrow-svg { width: 18px; height: 18px; }
+    .north-arrow-container:hover { background: #e0e0e0; }
+    .north-arrow-container:active { transform: scale(0.95); }
+    .north-arrow-svg { width: 16px; height: 16px; }
 
     .zoom-display {
       margin-top: 8px; padding-top: 6px; border-top: 1px solid #ddd;
@@ -58,12 +64,15 @@
     }
 
     /* Spatial Hierarchy Popup Styling */
-    .gis-popup { font-size: 13px; line-height: 1.5; min-width: 180px; }
+    .gis-popup { font-size: 13px; line-height: 1.5; min-width: 200px; }
     .gis-popup h4 {
       margin: 0 0 8px 0; padding-bottom: 4px; border-bottom: 2px solid #0078A8;
       color: #111; font-size: 14px;
     }
-    .gis-popup-row { margin-bottom: 4px; display: flex; justify-content: space-between; gap: 10px; }
+    .gis-popup-section {
+      font-size: 11px; font-weight: bold; text-transform: uppercase; color: #0078A8; margin: 6px 0 2px 0;
+    }
+    .gis-popup-row { margin-bottom: 3px; display: flex; justify-content: space-between; gap: 10px; }
     .gis-popup-label { font-weight: bold; color: #555; }
     .gis-popup-value { color: #111; font-weight: 500; text-align: right; }
   </style>
@@ -89,8 +98,8 @@
 <div id="layer-menu">
   <div class="legend-header">
     <strong>Layer Controls</strong>
-    <!-- North Arrow Marker Legend -->
-    <div class="north-arrow-container" title="North Direction Indicator">
+    <!-- Interactive North Compass Button -->
+    <div id="reset-north-btn" class="north-arrow-container" title="Click to Reset Map Orientation to North">
       <svg class="north-arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
         <path d="M12 2L19 21L12 17L5 21L12 2Z" fill="#e63946" stroke="#111" stroke-width="1.5" stroke-linejoin="round"/>
       </svg>
@@ -104,8 +113,11 @@
   <label for="toggle-l1">State (Level 1)</label><br>
   <input type="checkbox" id="toggle-l2" checked>
   <label for="toggle-l2">District (Level 2)</label><br>
-  <input type="checkbox" id="toggle-l3" checked>
+
+  <!-- Level 3 Sub-District is disabled/unchecked by default for initial load performance -->
+  <input type="checkbox" id="toggle-l3">
   <label for="toggle-l3">Sub-District (Level 3)</label><br>
+
   <input type="checkbox" id="toggle-cluster" checked>
   <label for="toggle-cluster">Marker Clusters</label><br>
   <input type="checkbox" id="toggle-heatmap" checked>
@@ -119,15 +131,20 @@
 <div id="map"></div>
 
 <script>
-  // Initialize Leaflet Map with Zoom Control on Top-Right
+  const DEFAULT_CENTER = [18.1124, 79.0193];
+  const DEFAULT_ZOOM = 7;
+  const SUBDISTRICT_ZOOM_THRESHOLD = 9.0;
+
+  // 1. OPTIMIZATION: Initialize Map with Canvas Renderer for Vector Performance
   const map = L.map('map', {
-    center: [18.1124, 79.0193], // Center on Telangana
-    zoom: 7,
-    zoomControl: false,          // Disable default top-left position
+    center: DEFAULT_CENTER,
+    zoom: DEFAULT_ZOOM,
+    zoomControl: false,
     zoomSnap: 0.25,
     zoomDelta: 0.25,
     wheelPxPerZoomLevel: 120,
-    zoomAnimation: true
+    zoomAnimation: true,
+    renderer: L.canvas() // Switches vector rendering from heavy DOM SVGs to Canvas
   });
 
   // Position Zoom Control to Top-Right
@@ -139,16 +156,15 @@
     attribution: '&copy; OpenStreetMap &copy; CARTO'
   }).addTo(map);
 
-  // Initialize Layer Groups
+  // Initialize Layer Groups (L3 not added to map on initial load)
   const layerL0 = L.layerGroup().addTo(map);
   const layerL1 = L.layerGroup().addTo(map);
   const layerL2 = L.layerGroup().addTo(map);
-  const layerL3 = L.layerGroup().addTo(map);
+  const layerL3 = L.layerGroup(); 
   const layerHeatmap = L.layerGroup().addTo(map);
 
-  // Marker Cluster Group
   const markerClusterGroup = L.markerClusterGroup({
-    chunkedLoading: true,
+    chunkedLoading: true, // Prevents browser freeze during large dataset clustering
     spiderfyOnMaxZoom: true,
     showCoverageOnHover: false,
     zoomToBoundsOnClick: true
@@ -156,10 +172,11 @@
 
   const API_BASE = 'http://localhost:8000/api/v1';
 
-  // Master Data Cache for Search and Filter Logic
   let districtGeoJsonLayer = null;
   let districtDataRaw = null;
+  let subDistrictDataRaw = null;
   let stateNamesSet = new Set();
+  let searchDebounceTimeout = null;
 
   async function loadGisData() {
     try {
@@ -181,32 +198,28 @@
           }).addTo(layerL1);
         });
 
-      // 3. Level 2: District (with Full Spatial Hierarchy Popups & Search Cache)
+      // 3. Level 2: District
       fetch(`${API_BASE}/boundaries/2`)
         .then(res => res.json())
         .then(data => {
           districtDataRaw = data;
-
-          // Populate State Names in Filter Dropdown
           data.features.forEach(feat => {
             const stateName = feat.properties?.NAME_1;
             if (stateName) stateNamesSet.add(stateName);
           });
           populateStateDropdown(Array.from(stateNamesSet).sort());
-
-          // Render Layer
           renderDistrictLayer(data);
         });
 
-      // 4. Level 3: Sub-District
+      // 4. Level 3: Sub-District (Lazy Loaded Vector Data)
       fetch(`${API_BASE}/boundaries/3`)
         .then(res => res.json())
         .then(data => {
+          subDistrictDataRaw = data;
           L.geoJSON(data, {
             style: { color: '#7570b3', weight: 0.8, dashArray: '2, 2', fill: false },
             onEachFeature: (feature, layer) => {
               const props = feature.properties || {};
-              // Full Spatial Hierarchy Popup for Sub-Districts
               const popupContent = `
                 <div class="gis-popup">
                   <h4>Spatial Hierarchy</h4>
@@ -221,7 +234,7 @@
           }).addTo(layerL3);
         });
 
-      // 5. Sample Points & Heatmap
+      // 5. Points & Heatmap
       fetch(`${API_BASE}/points/sample`)
         .then(res => res.json())
         .then(data => {
@@ -233,11 +246,21 @@
             },
             onEachFeature: (feature, layer) => {
               const props = feature.properties || {};
+              const subDistrict = props.NAME_3 || props.sub_district || 'N/A';
+              const district = props.NAME_2 || props.district || 'Telangana Region';
+              const state = props.NAME_1 || props.state || 'Telangana';
+              const nation = props.NAME_0 || props.nation || 'India';
+
               const popupContent = `
                 <div class="gis-popup">
-                  <h4>Spatial Point Feature</h4>
-                  <div class="gis-popup-row"><span class="gis-popup-label">Name:</span> <span class="gis-popup-value">${props.name || 'Point'}</span></div>
+                  <h4>Point Feature Details</h4>
+                  <div class="gis-popup-row"><span class="gis-popup-label">Feature Name:</span> <span class="gis-popup-value">${props.name || 'Sample Point'}</span></div>
                   <div class="gis-popup-row"><span class="gis-popup-label">Density Weight:</span> <span class="gis-popup-value">${props.weight || 1}</span></div>
+                  
+                  <div class="gis-popup-section">Administrative Hierarchy</div>
+                  <div class="gis-popup-row"><span class="gis-popup-label">District (L2):</span> <span class="gis-popup-value">${district}</span></div>
+                  <div class="gis-popup-row"><span class="gis-popup-label">State (L1):</span> <span class="gis-popup-value">${state}</span></div>
+                  <div class="gis-popup-row"><span class="gis-popup-label">Nation (L0):</span> <span class="gis-popup-value">${nation}</span></div>
                 </div>
               `;
               layer.bindPopup(popupContent);
@@ -257,18 +280,15 @@
     }
   }
 
-  // Render District Layer helper function
   function renderDistrictLayer(geoJsonData) {
     layerL2.clearLayers();
     districtGeoJsonLayer = L.geoJSON(geoJsonData, {
       style: { color: '#d95f02', weight: 1.5, fillColor: '#ff7800', fillOpacity: 0.12 },
       onEachFeature: (feature, layer) => {
         const props = feature.properties || {};
-        // Full Spatial Hierarchy Popup Information
         const popupContent = `
           <div class="gis-popup">
             <h4>Spatial Hierarchy Info</h4>
-            <div class="gis-popup-row"><span class="gis-popup-label">Sub-District:</span> <span class="gis-popup-value">${props.NAME_3 || 'N/A'}</span></div>
             <div class="gis-popup-row"><span class="gis-popup-label">District:</span> <span class="gis-popup-value">${props.NAME_2 || 'N/A'}</span></div>
             <div class="gis-popup-row"><span class="gis-popup-label">State:</span> <span class="gis-popup-value">${props.NAME_1 || 'N/A'}</span></div>
             <div class="gis-popup-row"><span class="gis-popup-label">Nation:</span> <span class="gis-popup-value">${props.NAME_0 || 'India'}</span></div>
@@ -279,7 +299,6 @@
     }).addTo(layerL2);
   }
 
-  // Populate State Filter Options
   function populateStateDropdown(statesArray) {
     const select = document.getElementById('state-filter');
     statesArray.forEach(state => {
@@ -290,14 +309,19 @@
     });
   }
 
-  // NEW TASK: Search and Filter Logic Implementation
+  // RESET NORTH CONTROLLER
+  document.getElementById('reset-north-btn').addEventListener('click', () => {
+    map.flyTo(DEFAULT_CENTER, DEFAULT_ZOOM, { animate: true, duration: 1.2 });
+  });
+
+  // State Dropdown Listener
   document.getElementById('state-filter').addEventListener('change', (e) => {
     const selectedState = e.target.value;
     if (!districtDataRaw) return;
 
     if (selectedState === 'ALL') {
       renderDistrictLayer(districtDataRaw);
-      map.setView([18.1124, 79.0193], 7);
+      map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
     } else {
       const filteredFeatures = districtDataRaw.features.filter(
         f => f.properties?.NAME_1 === selectedState
@@ -305,7 +329,6 @@
       const filteredGeoJson = { type: 'FeatureCollection', features: filteredFeatures };
       renderDistrictLayer(filteredGeoJson);
 
-      // Fit map view to selected state bounds
       if (filteredFeatures.length > 0) {
         const tempLayer = L.geoJSON(filteredGeoJson);
         map.fitBounds(tempLayer.getBounds(), { padding: [20, 20] });
@@ -313,26 +336,30 @@
     }
   });
 
-  // Text Search Bar Filter
+  // 2. OPTIMIZATION: Debounced Search Input Handler
   document.getElementById('search-input').addEventListener('input', (e) => {
+    clearTimeout(searchDebounceTimeout);
     const query = e.target.value.trim().toLowerCase();
-    if (!districtGeoJsonLayer || query.length < 2) return;
 
-    let matchedLayer = null;
-    districtGeoJsonLayer.eachLayer(layer => {
-      const props = layer.feature.properties || {};
-      const districtName = (props.NAME_2 || '').toLowerCase();
-      const stateName = (props.NAME_1 || '').toLowerCase();
+    searchDebounceTimeout = setTimeout(() => {
+      if (!districtGeoJsonLayer || query.length < 2) return;
 
-      if (districtName.includes(query) || stateName.includes(query)) {
-        if (!matchedLayer) matchedLayer = layer;
+      let matchedLayer = null;
+      districtGeoJsonLayer.eachLayer(layer => {
+        const props = layer.feature.properties || {};
+        const districtName = (props.NAME_2 || '').toLowerCase();
+        const stateName = (props.NAME_1 || '').toLowerCase();
+
+        if (districtName.includes(query) || stateName.includes(query)) {
+          if (!matchedLayer) matchedLayer = layer;
+        }
+      });
+
+      if (matchedLayer) {
+        map.flyToBounds(matchedLayer.getBounds(), { maxZoom: 10, duration: 1.2 });
+        matchedLayer.openPopup();
       }
-    });
-
-    if (matchedLayer) {
-      map.flyToBounds(matchedLayer.getBounds(), { maxZoom: 10, duration: 1.2 });
-      matchedLayer.openPopup();
-    }
+    }, 250); // Delay execution by 250ms
   });
 
   loadGisData();
@@ -357,10 +384,24 @@
     e.target.checked ? map.addLayer(layerHeatmap) : map.removeLayer(layerHeatmap);
   });
 
-  // Dynamic Zoom Display Update
+  // 3. OPTIMIZATION: Progressive Zoom Level Visibility Management
   const zoomDisplay = document.getElementById('zoom-level');
-  map.on('zoom', () => {
-    zoomDisplay.innerText = map.getZoom().toFixed(1);
+  const toggleL3Checkbox = document.getElementById('toggle-l3');
+
+  map.on('zoomend', () => {
+    const currentZoom = map.getZoom();
+    zoomDisplay.innerText = currentZoom.toFixed(1);
+
+    // Dynamic Thresholding: Show L3 only when zoomed in close enough (>= 9.0)
+    if (currentZoom >= SUBDISTRICT_ZOOM_THRESHOLD) {
+      if (toggleL3Checkbox.checked && !map.hasLayer(layerL3)) {
+        map.addLayer(layerL3);
+      }
+    } else {
+      if (map.hasLayer(layerL3)) {
+        map.removeLayer(layerL3);
+      }
+    }
   });
 </script>
 
