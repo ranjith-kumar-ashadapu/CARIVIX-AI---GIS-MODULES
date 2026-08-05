@@ -4,7 +4,7 @@ An interactive, high-performance WebGIS mapping engine built using **Leaflet.js*
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
 * **Multi-Level Administrative Hierarchy:** Real-time visibility toggling for Nation (L0), State (L1), District (L2), and Sub-District (L3) boundaries.
 * **Client-Side Performance Optimizations:**
@@ -17,7 +17,7 @@ An interactive, high-performance WebGIS mapping engine built using **Leaflet.js*
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 * **Frontend:** HTML5, CSS3, JavaScript (ES6+)
 * **Mapping Library:** Leaflet.js (v1.9.4)
@@ -26,9 +26,11 @@ An interactive, high-performance WebGIS mapping engine built using **Leaflet.js*
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 ├── index.html              # Main WebGIS application entry point
 ├── CHANGELOG.md            # Versioning and release history
 └── README.md               # Project documentation
+```
+---
