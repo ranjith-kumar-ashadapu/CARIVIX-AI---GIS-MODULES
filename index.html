@@ -114,8 +114,7 @@
   <input type="checkbox" id="toggle-l2" checked>
   <label for="toggle-l2">District (Level 2)</label><br>
 
-  <!-- Level 3 Sub-District is unchecked by default for initial load performance -->
-  <input type="checkbox" id="toggle-l3">
+  <input type="checkbox" id="toggle-l3" checked>
   <label for="toggle-l3">Sub-District (Level 3)</label><br>
 
   <input type="checkbox" id="toggle-cluster" checked>
@@ -133,9 +132,23 @@
 <script>
   const DEFAULT_CENTER = [18.1124, 79.0193];
   const DEFAULT_ZOOM = 7;
-  const SUBDISTRICT_ZOOM_THRESHOLD = 9.0;
+  const SUBDISTRICT_ZOOM_THRESHOLD = 8.0;
+  const DISTRICT_THICKEN_ZOOM = 8.0;
 
-  // Initialize Map with Canvas Renderer for Vector Performance
+  // Level 3 Style Definitions for Canvas Rendering Opacity Toggling
+  const L3_VISIBLE_STYLE = { color: '#6f42c1', weight: 1.2, opacity: 0.85, fillColor: '#805ad5', fillOpacity: 0.12 };
+  const L3_HIDDEN_STYLE = { opacity: 0, fillOpacity: 0 };
+
+  function getDistrictStyle(zoomLevel = map?.getZoom?.() ?? DEFAULT_ZOOM) {
+    return {
+      color: '#d95f02',
+      weight: zoomLevel >= DISTRICT_THICKEN_ZOOM ? 3.5 : 1.5,
+      fillColor: '#ff7800',
+      fillOpacity: 0.15
+    };
+  }
+
+  // Initialize Map with Canvas Renderer
   const map = L.map('map', {
     center: DEFAULT_CENTER,
     zoom: DEFAULT_ZOOM,
@@ -144,20 +157,20 @@
     zoomDelta: 0.25,
     wheelPxPerZoomLevel: 120,
     zoomAnimation: true,
-    preferCanvas: true // Forces global canvas rendering
+    preferCanvas: true
   });
 
   // ----------------------------------------------------
-  // CREATE CUSTOM PANES TO PREVENT CLICK SWALLOWING
+  // STACKING ORDER CONFIGURATION VIA CUSTOM PANES
   // ----------------------------------------------------
-  // Background Pane (L0 & L1): Ignores pointer clicks completely
-  map.createPane('bgPane');
-  map.getPane('bgPane').style.zIndex = 400;
-  map.getPane('bgPane').style.pointerEvents = 'none';
-
-  // Interactive District Pane (L2 & L3)
+  // 1. District/Sub-District Pane (Lower Z-Index for Fills & Local Lines)
   map.createPane('districtPane');
-  map.getPane('districtPane').style.zIndex = 450;
+  map.getPane('districtPane').style.zIndex = 410;
+
+  // 2. High-Priority Border Pane (Higher Z-Index so National & State lines stay on top)
+  map.createPane('borderPane');
+  map.getPane('borderPane').style.zIndex = 450;
+  map.getPane('borderPane').style.pointerEvents = 'none'; // Passes clicks through to districtPane/markers!
 
   // Position Zoom Control to Top-Right
   L.control.zoom({ position: 'topright' }).addTo(map);
@@ -168,11 +181,11 @@
     attribution: '&copy; OpenStreetMap &copy; CARTO'
   }).addTo(map);
 
-  // Initialize Layer Groups
+  // Layer Group Containers
   const layerL0 = L.layerGroup().addTo(map);
   const layerL1 = L.layerGroup().addTo(map);
   const layerL2 = L.layerGroup().addTo(map);
-  const layerL3 = L.layerGroup(); // Off by default on map load
+  const layerL3 = L.layerGroup().addTo(map);
   const layerHeatmap = L.layerGroup().addTo(map);
 
   const markerClusterGroup = L.markerClusterGroup({
@@ -185,6 +198,7 @@
   const API_BASE = 'http://localhost:8000/api/v1';
 
   let districtGeoJsonLayer = null;
+  let subDistrictGeoJsonLayer = null;
   let districtDataRaw = null;
   let subDistrictDataRaw = null;
   let stateNamesSet = new Set();
@@ -192,29 +206,29 @@
 
   async function loadGisData() {
     try {
-      // 1. Level 0: Nation (Assigned to bgPane with pointer-events: none)
+      // 1. Level 0: Nation (Renders ON TOP in borderPane, transparent to clicks)
       fetch(`${API_BASE}/boundaries/0`)
         .then(res => res.json())
         .then(data => {
           L.geoJSON(data, {
-            pane: 'bgPane',
+            pane: 'borderPane',
             interactive: false,
-            style: { color: '#000000', weight: 3, fill: false }
+            style: { color: '#000000', weight: 3.5, fill: false }
           }).addTo(layerL0);
         });
 
-      // 2. Level 1: State (Assigned to bgPane with pointer-events: none)
+      // 2. Level 1: State (Renders ON TOP in borderPane, transparent to clicks)
       fetch(`${API_BASE}/boundaries/1`)
         .then(res => res.json())
         .then(data => {
           L.geoJSON(data, {
-            pane: 'bgPane',
+            pane: 'borderPane',
             interactive: false,
-            style: { color: '#111111', weight: 2.5, fill: false }
+            style: { color: '#222222', weight: 2.5, fill: false }
           }).addTo(layerL1);
         });
 
-      // 3. Level 2: District (Interactive, on districtPane)
+      // 3. Level 2: District (Renders underneath national/state borders)
       fetch(`${API_BASE}/boundaries/2`)
         .then(res => res.json())
         .then(data => {
@@ -227,16 +241,18 @@
           renderDistrictLayer(data);
         });
 
-      // 4. Level 3: Sub-District (Interactive, on districtPane)
+      // 4. Level 3: Sub-District (Renders underneath national/state borders)
       fetch(`${API_BASE}/boundaries/3`)
         .then(res => res.json())
         .then(data => {
           subDistrictDataRaw = data;
-          L.geoJSON(data, {
+          const initialStyle = map.getZoom() >= SUBDISTRICT_ZOOM_THRESHOLD ? L3_VISIBLE_STYLE : L3_HIDDEN_STYLE;
+          
+          subDistrictGeoJsonLayer = L.geoJSON(data, {
             pane: 'districtPane',
             interactive: true,
             bubblingMouseEvents: false,
-            style: { color: '#7570b3', weight: 0.8, dashArray: '2, 2', fillColor: '#7570b3', fillOpacity: 0.05 },
+            style: initialStyle,
             onEachFeature: (feature, layer) => {
               const props = feature.properties || {};
               const popupContent = `
@@ -250,7 +266,6 @@
               `;
               layer.bindPopup(popupContent);
               
-              // Explicit click handler preventing event swallowing
               layer.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 layer.openPopup(e.latlng);
@@ -321,7 +336,7 @@
       pane: 'districtPane',
       interactive: true,
       bubblingMouseEvents: false,
-      style: { color: '#d95f02', weight: 1.5, fillColor: '#ff7800', fillOpacity: 0.15 },
+      style: () => getDistrictStyle(),
       onEachFeature: (feature, layer) => {
         const props = feature.properties || {};
         const popupContent = `
@@ -334,7 +349,6 @@
         `;
         layer.bindPopup(popupContent);
 
-        // Explicit click handler to force popup display on Canvas
         layer.on('click', (e) => {
           L.DomEvent.stopPropagation(e);
           layer.openPopup(e.latlng);
@@ -419,7 +433,15 @@
     e.target.checked ? map.addLayer(layerL2) : map.removeLayer(layerL2);
   });
   document.getElementById('toggle-l3').addEventListener('change', (e) => {
-    e.target.checked ? map.addLayer(layerL3) : map.removeLayer(layerL3);
+    if (!subDistrictGeoJsonLayer) return;
+    if (e.target.checked) {
+      if (!map.hasLayer(layerL3)) map.addLayer(layerL3);
+      if (map.getZoom() >= SUBDISTRICT_ZOOM_THRESHOLD) {
+        subDistrictGeoJsonLayer.setStyle(L3_VISIBLE_STYLE);
+      }
+    } else {
+      subDistrictGeoJsonLayer.setStyle(L3_HIDDEN_STYLE);
+    }
   });
   document.getElementById('toggle-cluster').addEventListener('change', (e) => {
     e.target.checked ? map.addLayer(markerClusterGroup) : map.removeLayer(markerClusterGroup);
@@ -436,14 +458,16 @@
     const currentZoom = map.getZoom();
     zoomDisplay.innerText = currentZoom.toFixed(1);
 
-    if (currentZoom >= SUBDISTRICT_ZOOM_THRESHOLD) {
-      if (toggleL3Checkbox.checked && !map.hasLayer(layerL3)) {
-        map.addLayer(layerL3);
+    if (subDistrictGeoJsonLayer && toggleL3Checkbox.checked) {
+      if (currentZoom >= SUBDISTRICT_ZOOM_THRESHOLD) {
+        subDistrictGeoJsonLayer.setStyle(L3_VISIBLE_STYLE);
+      } else {
+        subDistrictGeoJsonLayer.setStyle(L3_HIDDEN_STYLE);
       }
-    } else {
-      if (map.hasLayer(layerL3)) {
-        map.removeLayer(layerL3);
-      }
+    }
+
+    if (districtGeoJsonLayer) {
+      districtGeoJsonLayer.setStyle(getDistrictStyle(currentZoom));
     }
   });
 </script>
