@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-08-05
+
+### Fixed
+
+- Layer Occlusion & Stacking Order: Resolved visual bug where District (Level 2) and Sub-District (Level 3) polygon fills painted over National (Level 0) and State (Level 1) boundaries.
+- Popup Click Interception: Fixed issue where static boundary overlays swallowed click events on underlying interactive polygons and point markers.
+- Sub-District Path Rendering: Fixed Level 3 boundary fading across zoom transitions by switching from dynamic layer re-mounting to soft opacity toggling (L3_VISIBLE_STYLE / L3_HIDDEN_STYLE) to preserve Canvas rendering context.
+
+### Changed
+- Custom Pane & Z-Index Architecture: Introduced borderPane (zIndex: 450, pointer-events: none) for top-level borders and adjusted districtPane (zIndex: 410) for polygon fills.
+- Zoom Threshold Adjustment: Adjusted SUBDISTRICT_ZOOM_THRESHOLD to 7.0 to display Sub-District boundaries at default initial zoom viewports while maintaining smooth Canvas performance.
+
+---
+
 ## [1.1.0] - 2026-08
 
 ### Performance Optimizations & Enhancements
