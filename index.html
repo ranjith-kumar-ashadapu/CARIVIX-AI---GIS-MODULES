@@ -132,7 +132,7 @@
 <script>
   const DEFAULT_CENTER = [18.1124, 79.0193];
   const DEFAULT_ZOOM = 7;
-  const SUBDISTRICT_ZOOM_THRESHOLD = 8.0;
+  const SUBDISTRICT_ZOOM_THRESHOLD = 5.0;
   const DISTRICT_THICKEN_ZOOM = 8.0;
 
   // Level 3 Style Definitions for Canvas Rendering Opacity Toggling
@@ -157,7 +157,8 @@
     zoomDelta: 0.25,
     wheelPxPerZoomLevel: 120,
     zoomAnimation: true,
-    preferCanvas: true
+    preferCanvas: true,
+    renderer: L.svg()
   });
 
   // ----------------------------------------------------
