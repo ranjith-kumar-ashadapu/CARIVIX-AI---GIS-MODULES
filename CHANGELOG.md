@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **Kernel Density Heatmap:** Integrated continuous heat density rendering (`Leaflet.heat`) synchronized with feature property distributions.
 * **Bi-Directional Telemetry Dashboard:** Floating analytical dashboard panel updating on feature clicks and dropdown interactions.
 * **Keyless Basemap Integration:** Migrated to ESRI World Light Gray Canvas to eliminate CARTO watermark restrictions.
+* **Client-Side Spatial API Adapter:** Standardized `spatialService.js` to manage client-side RFC 7946 GeoJSON validation, EPSG:4326 bounds checking, and `Map` caching.
+* **Automated API Verification Suite:** Added `test_spatial_api.py` validating 8 REST API endpoint benchmarks (Intelligence Summary, Telemetry, Boundary Tiers 0–2, State Filtering, Sample Points, Spatial Queries) with a 100% pass rate.
+
+### Fixed
+* **Root Static Asset Serving:** Resolved HTTP 404 asset delivery failure on `GET /spatialService.js` in `server.py` by adding a dynamic root static file handler (`@app.get("/{file_name}")`) to serve ES module scripts, CSS, and JSON files directly from the workspace root, restoring Leaflet map canvas rendering.
 
 ### Optimized
 * **Rendering Pipeline:** Enforced `preferCanvas: true` yielding a 51.4% DOM node reduction (486 nodes) and 3.24x execution speedup.
