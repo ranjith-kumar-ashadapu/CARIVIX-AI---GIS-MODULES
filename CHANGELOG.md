@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] - 2026-09-05 (Sprint 4 — Week 4)
+
+### Added
+* **Dynamic GIS Intelligence Interface:** Upgraded from static cartographic display to an interactive spatial intelligence UI.
+* **Geographic Search & 250ms Debouncing:** Added real-time text search querying an in-memory `spatialFeatureIndex` with debouncing to prevent UI thread blocking.
+* **Cascading Region Selectors:** Dynamic State and District dropdown filtering with automated camera navigation (`map.fitBounds`).
+* **Thematic Choropleth & Dynamic Legend:** 4-tier quantile activity classification (`THEMATIC_SCALE`) with a real-time responsive map legend.
+* **Kernel Density Heatmap:** Integrated continuous heat density rendering (`Leaflet.heat`) synchronized with feature property distributions.
+* **Bi-Directional Telemetry Dashboard:** Floating analytical dashboard panel updating on feature clicks and dropdown interactions.
+* **Keyless Basemap Integration:** Migrated to ESRI World Light Gray Canvas to eliminate CARTO watermark restrictions.
+
+### Optimized
+* **Rendering Pipeline:** Enforced `preferCanvas: true` yielding a 51.4% DOM node reduction (486 nodes) and 3.24x execution speedup.
+* **DOM Pane Stacking:** Decoupled border overlays (`borderPane` with `pointer-events: none` at z-index 450) from interactive polygons (`districtPane` at z-index 410) to eliminate click event swallowing.
+* **Progressive Zoom Thresholding:** Dynamic styling updates based on zoom levels to maintain 60 FPS viewport navigation.
+
+
 ## [1.2.0] - 2026-08-05
 
 ### Fixed

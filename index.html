@@ -1,477 +1,1185 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>GIS Web Platform - Interactive North & Point Spatial Hierarchy (Leaflet)</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CARIVIX AI — WebGIS Intelligence Interface</title>
 
-  <!-- 1. Leaflet Core CSS & JS -->
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- 2. Leaflet Heatmap Plugin -->
-  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-
-  <!-- 3. Leaflet MarkerCluster CSS & JS -->
+  <!-- MarkerCluster CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-    
-    /* Search & Filter Control Panel (Top-Left) */
-    #search-menu {
-      position: absolute; top: 10px; left: 10px; z-index: 1000;
-      background: #ffffff; padding: 12px 16px; border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      width: 260px;
-    }
-    #search-menu h4 { margin: 0 0 8px 0; font-size: 14px; color: #1a1a1a; }
-    .filter-group { margin-bottom: 8px; }
-    .filter-group label { display: block; font-size: 11px; font-weight: bold; color: #666; text-transform: uppercase; margin-bottom: 3px; }
-    .filter-input, .filter-select {
-      width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px;
-      font-size: 13px; box-sizing: border-box; outline: none;
-    }
-    .filter-input:focus, .filter-select:focus { border-color: #0078A8; }
-
-    /* Layer Controls Panel & Legend (Bottom-Left) */
-    #layer-menu {
-      position: absolute; bottom: 15px; left: 10px; z-index: 1000;
-      background: #ffffff; padding: 14px 18px; border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      line-height: 1.6; font-size: 13px; min-width: 190px;
-    }
-    .legend-header {
-      display: flex; align-items: center; justify-content: space-between;
-      border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; margin-bottom: 8px;
-    }
-    
-    /* Interactive North Compass Marker */
-    .north-arrow-container {
-      display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: bold; color: #333;
-      cursor: pointer; user-select: none; transition: transform 0.2s ease;
-      padding: 2px 4px; border-radius: 4px; background: #f5f5f5; border: 1px solid #ddd;
-    }
-    .north-arrow-container:hover { background: #e0e0e0; }
-    .north-arrow-container:active { transform: scale(0.95); }
-    .north-arrow-svg { width: 16px; height: 16px; }
-
-    .zoom-display {
-      margin-top: 8px; padding-top: 6px; border-top: 1px solid #ddd;
-      font-weight: bold; color: #2b2b2b; font-size: 12px;
+    :root {
+      --bg-dark: #0f172a;
+      --panel-bg: rgba(15, 23, 42, 0.88);
+      --panel-light: rgba(255, 255, 255, 0.95);
+      --accent-blue: #38bdf8;
+      --accent-indigo: #6366f1;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
     }
 
-    /* Spatial Hierarchy Popup Styling */
-    .gis-popup { font-size: 13px; line-height: 1.5; min-width: 200px; }
-    .gis-popup h4 {
-      margin: 0 0 8px 0; padding-bottom: 4px; border-bottom: 2px solid #0078A8;
-      color: #111; font-size: 14px;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
-    .gis-popup-section {
-      font-size: 11px; font-weight: bold; text-transform: uppercase; color: #0078A8; margin: 6px 0 2px 0;
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
     }
-    .gis-popup-row { margin-bottom: 3px; display: flex; justify-content: space-between; gap: 10px; }
-    .gis-popup-label { font-weight: bold; color: #555; }
-    .gis-popup-value { color: #111; font-weight: 500; text-align: right; }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Top Navigation Status Header */
+    .gis-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      z-index: 1100;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .gis-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -0.3px;
+      color: #ffffff;
+    }
+
+    .gis-brand .logo-badge {
+      background: linear-gradient(135deg, #0284c7, #6366f1);
+      color: white;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 3px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .header-badges {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      background: rgba(30, 41, 59, 0.7);
+      padding: 4px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+    }
+
+    /* Floating Tabbed Control Panel (Top-Left) */
+    .gis-panel {
+      position: absolute;
+      top: 64px;
+      left: 16px;
+      z-index: 1000;
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      width: 340px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(30, 41, 59, 0.6);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .tab-btn.active {
+      color: var(--accent-blue);
+      border-bottom: 2px solid var(--accent-blue);
+      background: rgba(15, 23, 42, 0.8);
+    }
+
+    .tab-content {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-group label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .gis-input, .gis-select {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      outline: none;
+      background: #1e293b;
+      color: #ffffff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .gis-input:focus, .gis-select:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+
+    .layer-toggles-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .toggle-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #cbd5e1;
+      background: rgba(30, 41, 59, 0.8);
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: background 0.2s;
+    }
+
+    .toggle-chip:hover {
+      background: rgba(51, 65, 85, 0.8);
+    }
+
+    .toggle-chip input {
+      accent-color: var(--accent-blue);
+    }
+
+    /* Query Results Container */
+    .query-results-list {
+      max-height: 160px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: rgba(30, 41, 59, 0.5);
+    }
+
+    .result-item {
+      padding: 8px 10px;
+      font-size: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .result-item:hover {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-blue);
+    }
+
+    .result-tag {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+    }
+
+    /* Quick Action Buttons */
+    .gis-btn {
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0369a1, #1d4ed8);
+    }
+
+    .btn-secondary {
+      background: #334155;
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover {
+      background: #475569;
+    }
+
+    /* Top-Right Navigation Controls Toolbar */
+    .gis-nav-toolbar {
+      position: absolute;
+      top: 64px;
+      right: 16px;
+      z-index: 1000;
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-btn {
+      background: var(--panel-bg);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-color);
+      color: #ffffff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover {
+      background: #1e293b;
+      border-color: var(--accent-blue);
+    }
+
+    /* Bottom-Left Live Telemetry Dashboard */
+    .gis-dashboard {
+      position: absolute;
+      bottom: 24px;
+      left: 16px;
+      z-index: 1000;
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      min-width: 310px;
+    }
+
+    .gis-dashboard h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent-blue);
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dash-badge {
+      font-size: 10px;
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--accent-green);
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .metric-card {
+      background: rgba(30, 41, 59, 0.6);
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .metric-card .title {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .metric-card .value {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 2px;
+    }
+
+    /* Bottom-Right Dynamic Map Legend */
+    .gis-legend {
+      position: absolute;
+      bottom: 24px;
+      right: 16px;
+      z-index: 1000;
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      padding: 14px 16px;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      font-size: 11px;
+      min-width: 220px;
+    }
+
+    .gis-legend h5 {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #ffffff;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 4px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      color: #cbd5e1;
+    }
+
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .heat-gradient-bar {
+      height: 8px;
+      border-radius: 4px;
+      background: linear-gradient(to right, #2b83ba, #abdda4, #fdae61, #d7191c);
+      margin: 6px 0 4px 0;
+    }
+
+    .gradient-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: var(--text-muted);
+    }
+
+    /* Loader Modal Overlay */
+    #map-loader {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2000;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-color);
+      color: #ffffff;
+      padding: 16px 28px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      border-top-color: var(--accent-blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
 
-<!-- Search & Filtering Panel (Top-Left) -->
-<div id="search-menu">
-  <h4>Search & Filter GIS Map</h4>
-  <div class="filter-group">
-    <label for="search-input">Search District / State</label>
-    <input type="text" id="search-input" class="filter-input" placeholder="Type location name..." />
-  </div>
-  <div class="filter-group">
-    <label for="state-filter">Filter by State</label>
-    <select id="state-filter" class="filter-select">
-      <option value="ALL">All States & Territories</option>
-    </select>
-  </div>
-</div>
+  <!-- Top Navigation Header -->
+  <header class="gis-header">
+    <div class="gis-brand">
+      <span class="logo-badge">GIS Intelligence</span>
+      <span>CARIVIX AI WebGIS Engine</span>
+    </div>
+    <div class="header-badges">
+      <div class="status-badge">
+        <span class="status-dot"></span>
+        <span>PostGIS Services: Operational</span>
+      </div>
+      <div class="status-badge">
+        <span>CRS: EPSG:4326</span>
+      </div>
+      <div class="status-badge">
+        <span>Renderer: HTML5 Canvas (60 FPS)</span>
+      </div>
+    </div>
+  </header>
 
-<!-- Layer Controls & Legend Panel (Bottom-Left) -->
-<div id="layer-menu">
-  <div class="legend-header">
-    <strong>Layer Controls</strong>
-    <!-- Interactive North Compass Button -->
-    <div id="reset-north-btn" class="north-arrow-container" title="Click to Reset Map Orientation to North">
-      <svg class="north-arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path d="M12 2L19 21L12 17L5 21L12 2Z" fill="#e63946" stroke="#111" stroke-width="1.5" stroke-linejoin="round"/>
-      </svg>
-      <span>N</span>
+  <!-- Loading Indicator -->
+  <div id="map-loader">
+    <div class="spinner"></div>
+    <span>Synchronizing Spatial Intelligence...</span>
+  </div>
+
+  <!-- Floating Control Panel (Top-Left) -->
+  <div class="gis-panel">
+    <div class="panel-tabs">
+      <button class="tab-btn active" id="tab-btn-filter" onclick="switchTab('filter')">Search & Filter</button>
+      <button class="tab-btn" id="tab-btn-query" onclick="switchTab('query')">Query Engine</button>
+    </div>
+
+    <!-- Tab 1: Search & Filter -->
+    <div id="tab-content-filter" class="tab-content">
+      <div class="form-group">
+        <label>Geographic Search</label>
+        <input type="text" id="search-input" class="gis-input" placeholder="Search District or State..." autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label>State Selector (L1)</label>
+        <select id="state-select" class="gis-select">
+          <option value="">All States & Territories</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>District Selector (L2)</label>
+        <select id="district-select" class="gis-select">
+          <option value="">All Districts</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Layer Visibility</label>
+        <div class="layer-toggles-grid">
+          <label class="toggle-chip"><input type="checkbox" id="toggle-l0" checked /> National (L0)</label>
+          <label class="toggle-chip"><input type="checkbox" id="toggle-l1" checked /> State (L1)</label>
+          <label class="toggle-chip"><input type="checkbox" id="toggle-l2" checked /> District (L2)</label>
+          <label class="toggle-chip"><input type="checkbox" id="toggle-heat" checked /> Heatmap</label>
+          <label class="toggle-chip"><input type="checkbox" id="toggle-clusters" checked /> Point Clusters</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Spatial Query Engine -->
+    <div id="tab-content-query" class="tab-content hidden">
+      <div class="form-group">
+        <label>Keyword Query</label>
+        <input type="text" id="query-keyword" class="gis-input" placeholder="e.g. Hyderabad, Adilabad" />
+      </div>
+      <div class="form-group">
+        <label>Density Index Range</label>
+        <div style="display:flex; gap:8px;">
+          <input type="number" id="query-min-density" class="gis-input" placeholder="Min (0)" min="0" max="100" />
+          <input type="number" id="query-max-density" class="gis-input" placeholder="Max (100)" min="0" max="100" />
+        </div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="gis-btn btn-primary" style="flex:1;" onclick="executeSpatialQuery()">Execute Query</button>
+        <button class="gis-btn btn-secondary" onclick="resetQueryForm()">Reset</button>
+      </div>
+      <div class="form-group" style="margin-top:6px;">
+        <label id="query-results-count">Query Results (0)</label>
+        <div id="query-results-list" class="query-results-list">
+          <div class="result-item" style="color:var(--text-muted);">Execute a spatial query to view matching features.</div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <input type="checkbox" id="toggle-l0" checked>
-  <label for="toggle-l0">Nation (Level 0)</label><br>
-  <input type="checkbox" id="toggle-l1" checked>
-  <label for="toggle-l1">State (Level 1)</label><br>
-  <input type="checkbox" id="toggle-l2" checked>
-  <label for="toggle-l2">District (Level 2)</label><br>
-
-  <input type="checkbox" id="toggle-l3" checked>
-  <label for="toggle-l3">Sub-District (Level 3)</label><br>
-
-  <input type="checkbox" id="toggle-cluster" checked>
-  <label for="toggle-cluster">Marker Clusters</label><br>
-  <input type="checkbox" id="toggle-heatmap" checked>
-  <label for="toggle-heatmap">Heatmap Density</label>
-
-  <div class="zoom-display">
-    Zoom Level: <span id="zoom-level">7.0</span>
+  <!-- Map Toolbar (Top-Right) -->
+  <div class="gis-nav-toolbar">
+    <button class="nav-btn" onclick="resetNorthOrientation()" title="Reset Compass North">
+      🧭 Compass North
+    </button>
+    <button class="nav-btn" onclick="fitFullExtent()" title="Fit Full Extent">
+      🇮🇳 Full Extent
+    </button>
+    <select id="basemap-select" class="gis-select" style="width:auto; padding:6px 10px;" onchange="changeBasemap(this.value)">
+      <option value="esri-gray">ESRI Gray Canvas</option>
+      <option value="carto-dark">Carto Dark Matter</option>
+      <option value="osm">OpenStreetMap Standard</option>
+    </select>
   </div>
-</div>
 
-<div id="map"></div>
+  <!-- Real-Time Telemetry Dashboard (Bottom-Left) -->
+  <div class="gis-dashboard">
+    <h4 id="dash-title">
+      <span>National Overview</span>
+      <span id="dash-badge" class="dash-badge">Spatial Indexed</span>
+    </h4>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="title">Active Tier</div>
+        <div class="value" id="dash-tier">Level 0–2</div>
+      </div>
+      <div class="metric-card">
+        <div class="title">Density Index</div>
+        <div class="value" id="dash-density">48.2 / 100</div>
+      </div>
+      <div class="metric-card">
+        <div class="title">Risk Level</div>
+        <div class="value" id="dash-risk" style="color:var(--accent-amber);">Moderate</div>
+      </div>
+      <div class="metric-card">
+        <div class="title">Features Indexed</div>
+        <div class="value" id="dash-count">0 Nodes</div>
+      </div>
+    </div>
+  </div>
 
-<script>
-  const DEFAULT_CENTER = [18.1124, 79.0193];
-  const DEFAULT_ZOOM = 7;
-  const SUBDISTRICT_ZOOM_THRESHOLD = 5.0;
-  const DISTRICT_THICKEN_ZOOM = 8.0;
+  <!-- Dynamic Map Legend (Bottom-Right) -->
+  <div id="dynamic-legend" class="gis-legend"></div>
 
-  // Level 3 Style Definitions for Canvas Rendering Opacity Toggling
-  const L3_VISIBLE_STYLE = { color: '#6f42c1', weight: 1.2, opacity: 0.85, fillColor: '#805ad5', fillOpacity: 0.12 };
-  const L3_HIDDEN_STYLE = { opacity: 0, fillOpacity: 0 };
+  <!-- Leaflet Map Canvas Container -->
+  <div id="map"></div>
 
-  function getDistrictStyle(zoomLevel = map?.getZoom?.() ?? DEFAULT_ZOOM) {
-    return {
-      color: '#d95f02',
-      weight: zoomLevel >= DISTRICT_THICKEN_ZOOM ? 3.5 : 1.5,
-      fillColor: '#ff7800',
-      fillOpacity: 0.15
+  <!-- Leaflet & Supporting Plugins -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+  <script type="module">
+    import { fetchBoundaryLayer, fetchSamplePoints, querySpatialFeatures, fetchSpatialAnalytics } from './spatialService.js';
+
+    /* =========================================================================
+       1. MAP ENGINE INITIALIZATION (HTML5 Canvas Mode)
+       ========================================================================= */
+    const map = L.map('map', {
+      preferCanvas: true,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
+      minZoom: 4,
+      maxZoom: 16
+    }).setView([20.5937, 78.9629], 5);
+
+    // Basemaps
+    const basemaps = {
+      'esri-gray': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+        maxZoom: 16
+      }),
+      'carto-dark': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap, &copy; CARTO',
+        maxZoom: 18
+      }),
+      'osm': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      })
     };
-  }
+    basemaps['esri-gray'].addTo(map);
 
-  // Initialize Map with Canvas Renderer
-  const map = L.map('map', {
-    center: DEFAULT_CENTER,
-    zoom: DEFAULT_ZOOM,
-    zoomControl: false,
-    zoomSnap: 0.25,
-    zoomDelta: 0.25,
-    wheelPxPerZoomLevel: 120,
-    zoomAnimation: true,
-    preferCanvas: true,
-    renderer: L.svg()
-  });
+    window.changeBasemap = function(key) {
+      Object.values(basemaps).forEach(b => map.removeLayer(b));
+      if (basemaps[key]) basemaps[key].addTo(map);
+    };
 
-  // ----------------------------------------------------
-  // STACKING ORDER CONFIGURATION VIA CUSTOM PANES
-  // ----------------------------------------------------
-  // 1. District/Sub-District Pane (Lower Z-Index for Fills & Local Lines)
-  map.createPane('districtPane');
-  map.getPane('districtPane').style.zIndex = 410;
+    // Stacking Panes Architecture
+    map.createPane('borderPane');
+    map.getPane('borderPane').style.zIndex = '450';
+    map.getPane('borderPane').style.pointerEvents = 'none';
 
-  // 2. High-Priority Border Pane (Higher Z-Index so National & State lines stay on top)
-  map.createPane('borderPane');
-  map.getPane('borderPane').style.zIndex = 450;
-  map.getPane('borderPane').style.pointerEvents = 'none'; // Passes clicks through to districtPane/markers!
+    map.createPane('districtPane');
+    map.getPane('districtPane').style.zIndex = '410';
 
-  // Position Zoom Control to Top-Right
-  L.control.zoom({ position: 'topright' }).addTo(map);
+    // Global Layer Groups
+    const layerStores = {
+      l0: L.layerGroup().addTo(map),
+      l1: L.layerGroup().addTo(map),
+      l2: L.layerGroup().addTo(map),
+      heat: L.layerGroup().addTo(map),
+      clusters: L.markerClusterGroup({ chunkedLoading: true }).addTo(map)
+    };
 
-  // Base Map Layer
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap &copy; CARTO'
-  }).addTo(map);
+    const spatialFeatureIndex = new Map();
+    let rawDistrictGeoJson = null;
+    let activeHighlightLayer = null;
 
-  // Layer Group Containers
-  const layerL0 = L.layerGroup().addTo(map);
-  const layerL1 = L.layerGroup().addTo(map);
-  const layerL2 = L.layerGroup().addTo(map);
-  const layerL3 = L.layerGroup().addTo(map);
-  const layerHeatmap = L.layerGroup().addTo(map);
+    /* =========================================================================
+       2. THEMATIC COLOR SCALE & LEGEND (Day 3)
+       ========================================================================= */
+    const THEMATIC_SCALE = [
+      { min: 0,  max: 25, color: '#bae4bc', label: 'Low Activity (< 25)' },
+      { min: 25, max: 50, color: '#7bccc4', label: 'Moderate (25–50)' },
+      { min: 50, max: 75, color: '#43a2ca', label: 'Elevated (50–75)' },
+      { min: 75, max: 100, color: '#0868ac', label: 'Critical / High (> 75)' }
+    ];
 
-  const markerClusterGroup = L.markerClusterGroup({
-    chunkedLoading: true,
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    zoomToBoundsOnClick: true
-  }).addTo(map);
-
-  const API_BASE = 'http://localhost:8000/api/v1';
-
-  let districtGeoJsonLayer = null;
-  let subDistrictGeoJsonLayer = null;
-  let districtDataRaw = null;
-  let subDistrictDataRaw = null;
-  let stateNamesSet = new Set();
-  let searchDebounceTimeout = null;
-
-  async function loadGisData() {
-    try {
-      // 1. Level 0: Nation (Renders ON TOP in borderPane, transparent to clicks)
-      fetch(`${API_BASE}/boundaries/0`)
-        .then(res => res.json())
-        .then(data => {
-          L.geoJSON(data, {
-            pane: 'borderPane',
-            interactive: false,
-            style: { color: '#000000', weight: 3.5, fill: false }
-          }).addTo(layerL0);
-        });
-
-      // 2. Level 1: State (Renders ON TOP in borderPane, transparent to clicks)
-      fetch(`${API_BASE}/boundaries/1`)
-        .then(res => res.json())
-        .then(data => {
-          L.geoJSON(data, {
-            pane: 'borderPane',
-            interactive: false,
-            style: { color: '#222222', weight: 2.5, fill: false }
-          }).addTo(layerL1);
-        });
-
-      // 3. Level 2: District (Renders underneath national/state borders)
-      fetch(`${API_BASE}/boundaries/2`)
-        .then(res => res.json())
-        .then(data => {
-          districtDataRaw = data;
-          data.features.forEach(feat => {
-            const stateName = feat.properties?.NAME_1;
-            if (stateName) stateNamesSet.add(stateName);
-          });
-          populateStateDropdown(Array.from(stateNamesSet).sort());
-          renderDistrictLayer(data);
-        });
-
-      // 4. Level 3: Sub-District (Renders underneath national/state borders)
-      fetch(`${API_BASE}/boundaries/3`)
-        .then(res => res.json())
-        .then(data => {
-          subDistrictDataRaw = data;
-          const initialStyle = map.getZoom() >= SUBDISTRICT_ZOOM_THRESHOLD ? L3_VISIBLE_STYLE : L3_HIDDEN_STYLE;
-          
-          subDistrictGeoJsonLayer = L.geoJSON(data, {
-            pane: 'districtPane',
-            interactive: true,
-            bubblingMouseEvents: false,
-            style: initialStyle,
-            onEachFeature: (feature, layer) => {
-              const props = feature.properties || {};
-              const popupContent = `
-                <div class="gis-popup">
-                  <h4>Spatial Hierarchy</h4>
-                  <div class="gis-popup-row"><span class="gis-popup-label">Sub-District:</span> <span class="gis-popup-value">${props.NAME_3 || 'N/A'}</span></div>
-                  <div class="gis-popup-row"><span class="gis-popup-label">District:</span> <span class="gis-popup-value">${props.NAME_2 || 'N/A'}</span></div>
-                  <div class="gis-popup-row"><span class="gis-popup-label">State:</span> <span class="gis-popup-value">${props.NAME_1 || 'N/A'}</span></div>
-                  <div class="gis-popup-row"><span class="gis-popup-label">Nation:</span> <span class="gis-popup-value">${props.NAME_0 || 'India'}</span></div>
-                </div>
-              `;
-              layer.bindPopup(popupContent);
-              
-              layer.on('click', (e) => {
-                L.DomEvent.stopPropagation(e);
-                layer.openPopup(e.latlng);
-              });
-            }
-          }).addTo(layerL3);
-        });
-
-      // 5. Points & Heatmap
-      fetch(`${API_BASE}/points/sample`)
-        .then(res => res.json())
-        .then(data => {
-          const pointLayer = L.geoJSON(data, {
-            pointToLayer: (feature, latlng) => {
-              return L.circleMarker(latlng, {
-                radius: 8, 
-                fillColor: '#e63946', 
-                color: '#ffffff', 
-                weight: 2, 
-                fillOpacity: 0.9,
-                interactive: true
-              });
-            },
-            onEachFeature: (feature, layer) => {
-              const props = feature.properties || {};
-              const district = props.NAME_2 || props.district || 'Telangana Region';
-              const state = props.NAME_1 || props.state || 'Telangana';
-              const nation = props.NAME_0 || props.nation || 'India';
-
-              const popupContent = `
-                <div class="gis-popup">
-                  <h4>Point Feature Details</h4>
-                  <div class="gis-popup-row"><span class="gis-popup-label">Feature Name:</span> <span class="gis-popup-value">${props.name || 'Sample Point'}</span></div>
-                  <div class="gis-popup-row"><span class="gis-popup-label">Density Weight:</span> <span class="gis-popup-value">${props.weight || 1}</span></div>
-                  
-                  <div class="gis-popup-section">Administrative Hierarchy</div>
-                  <div class="gis-popup-row"><span class="gis-popup-label">District (L2):</span> <span class="gis-popup-value">${district}</span></div>
-                  <div class="gis-popup-row"><span class="gis-popup-label">State (L1):</span> <span class="gis-popup-value">${state}</span></div>
-                  <div class="gis-popup-row"><span class="gis-popup-label">Nation (L0):</span> <span class="gis-popup-value">${nation}</span></div>
-                </div>
-              `;
-              layer.bindPopup(popupContent);
-
-              layer.on('click', (e) => {
-                L.DomEvent.stopPropagation(e);
-                layer.openPopup();
-              });
-            }
-          });
-
-          markerClusterGroup.clearLayers();
-          markerClusterGroup.addLayers(pointLayer.getLayers());
-
-          const heatPoints = data.features.map(f => [
-            f.geometry.coordinates[1], f.geometry.coordinates[0], f.properties.weight || 1
-          ]);
-          L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 10 }).addTo(layerHeatmap);
-        });
-
-    } catch (err) {
-      console.error('Error loading GIS data:', err);
+    function getThematicColor(val) {
+      const num = Number(val) || 0;
+      for (const bin of THEMATIC_SCALE) {
+        if (num >= bin.min && num <= bin.max) return bin.color;
+      }
+      return '#0868ac';
     }
-  }
 
-  function renderDistrictLayer(geoJsonData) {
-    layerL2.clearLayers();
-    districtGeoJsonLayer = L.geoJSON(geoJsonData, {
-      pane: 'districtPane',
-      interactive: true,
-      bubblingMouseEvents: false,
-      style: () => getDistrictStyle(),
-      onEachFeature: (feature, layer) => {
-        const props = feature.properties || {};
-        const popupContent = `
-          <div class="gis-popup">
-            <h4>Spatial Hierarchy Info</h4>
-            <div class="gis-popup-row"><span class="gis-popup-label">District:</span> <span class="gis-popup-value">${props.NAME_2 || 'N/A'}</span></div>
-            <div class="gis-popup-row"><span class="gis-popup-label">State:</span> <span class="gis-popup-value">${props.NAME_1 || 'N/A'}</span></div>
-            <div class="gis-popup-row"><span class="gis-popup-label">Nation:</span> <span class="gis-popup-value">${props.NAME_0 || 'India'}</span></div>
+    function renderDynamicLegend() {
+      const legend = document.getElementById('dynamic-legend');
+      let html = '<h5>Density & Thematic Classification</h5>';
+      THEMATIC_SCALE.forEach(bin => {
+        html += `
+          <div class="legend-item">
+            <span class="legend-color" style="background:${bin.color};"></span>
+            <span>${bin.label}</span>
           </div>
         `;
-        layer.bindPopup(popupContent);
+      });
+      html += `
+        <h5 style="margin-top:10px;">Kernel Heat Density</h5>
+        <div class="heat-gradient-bar"></div>
+        <div class="gradient-labels">
+          <span>Low</span><span>Medium</span><span>High Intensity</span>
+        </div>
+      `;
+      legend.innerHTML = html;
+    }
 
-        layer.on('click', (e) => {
-          L.DomEvent.stopPropagation(e);
-          layer.openPopup(e.latlng);
-        });
-      }
-    }).addTo(layerL2);
-  }
+    /* =========================================================================
+       3. SPATIAL DATA SYNCHRONIZATION & AUTO FALLBACK (Day 1)
+       ========================================================================= */
+    const FILE_MAP = {
+      0: "00_India_National.geojson",
+      1: "01_Telangana_State.geojson",
+      2: "02_Telangana_Districts.geojson"
+    };
 
-  function populateStateDropdown(statesArray) {
-    const select = document.getElementById('state-filter');
-    statesArray.forEach(state => {
-      const opt = document.createElement('option');
-      opt.value = state;
-      opt.textContent = state;
-      select.appendChild(opt);
-    });
-  }
+    function getCandidateUrls(tier) {
+      const filename = FILE_MAP[tier];
+      return [
+        `/api/v1/spatial/boundaries/${tier}`,
+        `./assets/optimized_geojson/${filename}`,
+        `./assets/raw_geojson/${filename}`,
+        `./assets/${filename}`
+      ];
+    }
 
-  // Reset North Controller
-  document.getElementById('reset-north-btn').addEventListener('click', () => {
-    map.flyTo(DEFAULT_CENTER, DEFAULT_ZOOM, { animate: true, duration: 1.2 });
-  });
-
-  // State Dropdown Listener
-  document.getElementById('state-filter').addEventListener('change', (e) => {
-    const selectedState = e.target.value;
-    if (!districtDataRaw) return;
-
-    if (selectedState === 'ALL') {
-      renderDistrictLayer(districtDataRaw);
-      map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-    } else {
-      const filteredFeatures = districtDataRaw.features.filter(
-        f => f.properties?.NAME_1 === selectedState
-      );
-      const filteredGeoJson = { type: 'FeatureCollection', features: filteredFeatures };
-      renderDistrictLayer(filteredGeoJson);
-
-      if (filteredFeatures.length > 0) {
-        const tempLayer = L.geoJSON(filteredGeoJson);
-        map.fitBounds(tempLayer.getBounds(), { padding: [20, 20] });
+    async function fetchWithFallback(tier) {
+      try {
+        return await fetchBoundaryLayer(tier);
+      } catch (err) {
+        const urls = getCandidateUrls(tier);
+        for (const url of urls) {
+          try {
+            const res = await fetch(url);
+            if (res.ok) return await res.json();
+          } catch (e) {}
+        }
+        throw new Error(`Failed to load boundary tier ${tier}`);
       }
     }
-  });
 
-  // Debounced Search Input Handler
-  document.getElementById('search-input').addEventListener('input', (e) => {
-    clearTimeout(searchDebounceTimeout);
-    const query = e.target.value.trim().toLowerCase();
+    async function syncMapData() {
+      const loader = document.getElementById('map-loader');
+      if (loader) loader.style.display = 'flex';
 
-    searchDebounceTimeout = setTimeout(() => {
-      if (!districtGeoJsonLayer || query.length < 2) return;
+      try {
+        const [l0Data, l1Data, l2Data] = await Promise.all([
+          fetchWithFallback(0),
+          fetchWithFallback(1),
+          fetchWithFallback(2)
+        ]);
 
-      let matchedLayer = null;
-      districtGeoJsonLayer.eachLayer(layer => {
-        const props = layer.feature.properties || {};
-        const districtName = (props.NAME_2 || '').toLowerCase();
-        const stateName = (props.NAME_1 || '').toLowerCase();
+        layerStores.l0.clearLayers();
+        layerStores.l1.clearLayers();
+        layerStores.l2.clearLayers();
+        spatialFeatureIndex.clear();
 
-        if (districtName.includes(query) || stateName.includes(query)) {
-          if (!matchedLayer) matchedLayer = layer;
+        // Level 0: National
+        L.geoJSON(l0Data, {
+          pane: 'borderPane',
+          interactive: false,
+          style: { color: '#0f172a', weight: 3.2, fill: false }
+        }).addTo(layerStores.l0);
+
+        // Level 1: State Borders
+        L.geoJSON(l1Data, {
+          pane: 'borderPane',
+          interactive: false,
+          style: { color: '#1e293b', weight: 2.0, fill: false }
+        }).addTo(layerStores.l1);
+
+        // Level 2: Interactive Districts
+        rawDistrictGeoJson = l2Data;
+        mountDistrictIntelligence(l2Data);
+
+        // Heatmap & Points
+        mountHeatmapAndPoints(l2Data);
+
+        // Populate Dropdowns & Dynamic Legend
+        populateDropdownFilters(l2Data);
+        renderDynamicLegend();
+
+        // Auto-fit camera
+        if (layerStores.l2.getLayers().length > 0) {
+          map.fitBounds(layerStores.l2.getBounds(), { padding: [30, 30] });
+        }
+
+        document.getElementById('dash-count').textContent = `${spatialFeatureIndex.size} Districts`;
+        
+        // Fetch API analytics summary if available
+        fetchSpatialAnalytics().then(analytics => {
+          if (analytics && analytics.total_districts_indexed) {
+            document.getElementById('dash-count').textContent = `${analytics.total_districts_indexed} Features`;
+          }
+        }).catch(e => console.warn('Spatial Analytics API Offline, using local memory index.'));
+
+      } catch (err) {
+        console.error('Spatial Sync Failure:', err);
+      } finally {
+        if (loader) loader.style.display = 'none';
+      }
+    }
+
+    /* =========================================================================
+       4. SPATIAL INTELLIGENCE & POPUPS (Day 3 & Day 4)
+       ========================================================================= */
+    function mountDistrictIntelligence(geoJsonData) {
+      L.geoJSON(geoJsonData, {
+        pane: 'districtPane',
+        style: (feature) => {
+          const val = feature.properties.density_index || ((feature.properties.NAME_2?.length * 7) % 100);
+          feature.properties.density_index = val;
+          return {
+            fillColor: getThematicColor(val),
+            fillOpacity: 0.45,
+            color: '#475569',
+            weight: 0.8,
+            opacity: 0.9
+          };
+        },
+        onEachFeature: (feature, layer) => {
+          const props = feature.properties || {};
+          const districtKey = (props.NAME_2 || props.district_id || '').toLowerCase().trim();
+          if (districtKey) {
+            spatialFeatureIndex.set(districtKey, { feature, layer });
+          }
+
+          layer.on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            isolateAndInspectFeature(layer, feature);
+          });
+        }
+      }).addTo(layerStores.l2);
+    }
+
+    async function mountHeatmapAndPoints(geoJsonData) {
+      layerStores.heat.clearLayers();
+      layerStores.clusters.clearLayers();
+      const points = [];
+
+      // Extract district centroids
+      geoJsonData.features.forEach(f => {
+        if (f.geometry && f.geometry.coordinates) {
+          const geom = f.geometry;
+          let lat, lng;
+          if (geom.type === 'Polygon') {
+            lng = geom.coordinates[0][0][0];
+            lat = geom.coordinates[0][0][1];
+          } else if (geom.type === 'MultiPolygon') {
+            lng = geom.coordinates[0][0][0][0];
+            lat = geom.coordinates[0][0][0][1];
+          }
+          if (lat && lng) {
+            const intensity = (f.properties.density_index || 50) / 100;
+            points.push([lat, lng, intensity]);
+          }
         }
       });
 
-      if (matchedLayer) {
-        map.flyToBounds(matchedLayer.getBounds(), { maxZoom: 10, duration: 1.2 });
-        matchedLayer.openPopup();
-      }
-    }, 250);
-  });
+      // Try fetching sample points API
+      try {
+        const samplePts = await fetchSamplePoints();
+        if (samplePts && samplePts.features) {
+          samplePts.features.forEach(pt => {
+            const [lng, lat] = pt.geometry.coordinates;
+            const w = (pt.properties.weight || 5) / 10;
+            points.push([lat, lng, w]);
 
-  loadGisData();
-
-  // Layer Checkbox Listeners
-  document.getElementById('toggle-l0').addEventListener('change', (e) => {
-    e.target.checked ? map.addLayer(layerL0) : map.removeLayer(layerL0);
-  });
-  document.getElementById('toggle-l1').addEventListener('change', (e) => {
-    e.target.checked ? map.addLayer(layerL1) : map.removeLayer(layerL1);
-  });
-  document.getElementById('toggle-l2').addEventListener('change', (e) => {
-    e.target.checked ? map.addLayer(layerL2) : map.removeLayer(layerL2);
-  });
-  document.getElementById('toggle-l3').addEventListener('change', (e) => {
-    if (!subDistrictGeoJsonLayer) return;
-    if (e.target.checked) {
-      if (!map.hasLayer(layerL3)) map.addLayer(layerL3);
-      if (map.getZoom() >= SUBDISTRICT_ZOOM_THRESHOLD) {
-        subDistrictGeoJsonLayer.setStyle(L3_VISIBLE_STYLE);
+            // Add marker cluster
+            const marker = L.marker([lat, lng]).bindPopup(`
+              <div style="font-size:12px;">
+                <strong>${pt.properties.name || pt.properties.city || 'Spatial Node'}</strong><br>
+                Weight: ${pt.properties.weight || 5}
+              </div>
+            `);
+            layerStores.clusters.addLayer(marker);
+          });
+        }
+      } catch (e) {
+        console.warn('Sample points API unavailable, relying on district centroids.');
       }
-    } else {
-      subDistrictGeoJsonLayer.setStyle(L3_HIDDEN_STYLE);
+
+      if (typeof L.heatLayer === 'function' && points.length > 0) {
+        L.heatLayer(points, {
+          radius: 28,
+          blur: 16,
+          maxZoom: 10,
+          gradient: { 0.2: '#2b83ba', 0.5: '#abdda4', 0.8: '#fdae61', 1.0: '#d7191c' }
+        }).addTo(layerStores.heat);
+      }
     }
-  });
-  document.getElementById('toggle-cluster').addEventListener('change', (e) => {
-    e.target.checked ? map.addLayer(markerClusterGroup) : map.removeLayer(markerClusterGroup);
-  });
-  document.getElementById('toggle-heatmap').addEventListener('change', (e) => {
-    e.target.checked ? map.addLayer(layerHeatmap) : map.removeLayer(layerHeatmap);
-  });
 
-  // Progressive Zoom Level Visibility Management
-  const zoomDisplay = document.getElementById('zoom-level');
-  const toggleL3Checkbox = document.getElementById('toggle-l3');
+    /* =========================================================================
+       5. SEARCH, FILTERING & TELEMETRY (Day 2 & Day 4)
+       ========================================================================= */
+    function isolateAndInspectFeature(layer, feature) {
+      const props = feature.properties || {};
 
-  map.on('zoomend', () => {
-    const currentZoom = map.getZoom();
-    zoomDisplay.innerText = currentZoom.toFixed(1);
+      map.flyToBounds(layer.getBounds(), {
+        maxZoom: 9,
+        duration: 1.2,
+        easeLinearity: 0.25
+      });
 
-    if (subDistrictGeoJsonLayer && toggleL3Checkbox.checked) {
-      if (currentZoom >= SUBDISTRICT_ZOOM_THRESHOLD) {
-        subDistrictGeoJsonLayer.setStyle(L3_VISIBLE_STYLE);
+      // Highlight Vector
+      if (activeHighlightLayer) map.removeLayer(activeHighlightLayer);
+      activeHighlightLayer = L.geoJSON(feature, {
+        pane: 'borderPane',
+        style: { color: '#ef4444', weight: 3.5, fillOpacity: 0.15 }
+      }).addTo(map);
+
+      // Popup Content
+      const popupHtml = `
+        <div style="font-size:12px;min-width:180px;color:#0f172a;">
+          <h4 style="font-size:14px;font-weight:700;margin-bottom:4px;color:#0f172a;">${props.NAME_2 || props.district_id || 'District'}</h4>
+          <p style="color:#475569;">State: <strong>${props.NAME_1 || 'N/A'}</strong></p>
+          <p style="color:#475569;">Density Index: <strong>${props.density_index} / 100</strong></p>
+          <p style="color:#0284c7;font-weight:600;margin-top:4px;">Status: Monitored Node</p>
+        </div>
+      `;
+      layer.bindPopup(popupHtml).openPopup();
+
+      // Update Telemetry Panel
+      document.getElementById('dash-title').innerHTML = `<span>${props.NAME_2 || 'District'}</span> <span class="dash-badge">${props.NAME_1 || 'State'}</span>`;
+      document.getElementById('dash-tier').textContent = 'District Level (L2)';
+      document.getElementById('dash-density').textContent = `${props.density_index} / 100`;
+      
+      const riskEl = document.getElementById('dash-risk');
+      if (props.density_index > 75) {
+        riskEl.textContent = 'High Risk';
+        riskEl.style.color = 'var(--accent-red)';
+      } else if (props.density_index > 50) {
+        riskEl.textContent = 'Elevated';
+        riskEl.style.color = 'var(--accent-amber)';
       } else {
-        subDistrictGeoJsonLayer.setStyle(L3_HIDDEN_STYLE);
+        riskEl.textContent = 'Optimal';
+        riskEl.style.color = 'var(--accent-green)';
       }
     }
 
-    if (districtGeoJsonLayer) {
-      districtGeoJsonLayer.setStyle(getDistrictStyle(currentZoom));
-    }
-  });
-</script>
+    // 250ms Debounced Search Handler
+    let searchTimer = null;
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('input', (e) => {
+      clearTimeout(searchTimer);
+      const query = e.target.value.toLowerCase().trim();
 
+      searchTimer = setTimeout(() => {
+        if (!query || query.length < 2) {
+          resetFeatureStyling();
+          return;
+        }
+
+        let found = false;
+        for (const [key, item] of spatialFeatureIndex.entries()) {
+          if (key.includes(query)) {
+            isolateAndInspectFeature(item.layer, item.feature);
+            found = true;
+            break;
+          }
+        }
+      }, 250);
+    });
+
+    // Cascading Dropdowns
+    function populateDropdownFilters(geoJson) {
+      const stateSelect = document.getElementById('state-select');
+      const districtSelect = document.getElementById('district-select');
+
+      const stateMap = new Map();
+
+      geoJson.features.forEach(f => {
+        const s = f.properties.NAME_1;
+        const d = f.properties.NAME_2 || f.properties.district_id;
+        if (s) {
+          if (!stateMap.has(s)) stateMap.set(s, []);
+          if (d) stateMap.get(s).push(d);
+        }
+      });
+
+      Array.from(stateMap.keys()).sort().forEach(state => {
+        const opt = document.createElement('option');
+        opt.value = state;
+        opt.textContent = state;
+        stateSelect.appendChild(opt);
+      });
+
+      stateSelect.addEventListener('change', (e) => {
+        const stateName = e.target.value;
+        districtSelect.innerHTML = '<option value="">All Districts</option>';
+
+        if (!stateName) {
+          resetFeatureStyling();
+          return;
+        }
+
+        const districts = (stateMap.get(stateName) || []).sort();
+        districts.forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = d;
+          opt.textContent = d;
+          districtSelect.appendChild(opt);
+        });
+
+        // Filter Map Boundaries
+        const stateLayers = [];
+        layerStores.l2.eachLayer(l => {
+          if (l.feature.properties.NAME_1 === stateName) {
+            l.setStyle({ fillOpacity: 0.65, opacity: 1.0, weight: 1.5 });
+            stateLayers.push(l);
+          } else {
+            l.setStyle({ fillOpacity: 0.05, opacity: 0.2, weight: 0.4 });
+          }
+        });
+
+        if (stateLayers.length > 0) {
+          const group = L.featureGroup(stateLayers);
+          map.fitBounds(group.getBounds(), { padding: [40, 40], maxZoom: 8 });
+          document.getElementById('dash-title').innerHTML = `<span>${stateName}</span> <span class="dash-badge">State Level</span>`;
+          document.getElementById('dash-tier').textContent = 'State Level (L1)';
+          document.getElementById('dash-risk').textContent = 'Statewide Aggregation';
+        }
+      });
+
+      districtSelect.addEventListener('change', (e) => {
+        const distName = e.target.value.toLowerCase().trim();
+        if (!distName) return;
+        const target = spatialFeatureIndex.get(distName);
+        if (target) isolateAndInspectFeature(target.layer, target.feature);
+      });
+    }
+
+    function resetFeatureStyling() {
+      if (activeHighlightLayer) {
+        map.removeLayer(activeHighlightLayer);
+        activeHighlightLayer = null;
+      }
+      layerStores.l2.eachLayer(l => {
+        const val = l.feature.properties.density_index || 40;
+        l.setStyle({
+          fillColor: getThematicColor(val),
+          fillOpacity: 0.45,
+          color: '#475569',
+          weight: 0.8,
+          opacity: 0.9
+        });
+      });
+    }
+
+    /* =========================================================================
+       6. SPATIAL QUERY ENGINE (Day 4)
+       ========================================================================= */
+    window.switchTab = function(tabName) {
+      document.getElementById('tab-btn-filter').classList.toggle('active', tabName === 'filter');
+      document.getElementById('tab-btn-query').classList.toggle('active', tabName === 'query');
+      document.getElementById('tab-content-filter').classList.toggle('hidden', tabName !== 'filter');
+      document.getElementById('tab-content-query').classList.toggle('hidden', tabName !== 'query');
+    };
+
+    window.executeSpatialQuery = async function() {
+      const q = document.getElementById('query-keyword').value.trim();
+      const minD = document.getElementById('query-min-density').value;
+      const maxD = document.getElementById('query-max-density').value;
+
+      try {
+        const results = await querySpatialFeatures({
+          q: q || undefined,
+          min_density: minD ? Number(minD) : undefined,
+          max_density: maxD ? Number(maxD) : undefined
+        });
+
+        const listEl = document.getElementById('query-results-list');
+        const countEl = document.getElementById('query-results-count');
+        countEl.textContent = `Query Results (${results.count})`;
+
+        if (results.count === 0) {
+          listEl.innerHTML = '<div class="result-item" style="color:var(--text-muted);">No matching spatial features found.</div>';
+          return;
+        }
+
+        let html = '';
+        const matchingLayers = [];
+
+        results.features.forEach(feat => {
+          const props = feat.properties || {};
+          const dName = props.NAME_2 || props.district_id || 'District';
+          const sName = props.NAME_1 || 'State';
+          const dens = props.density_index || 0;
+
+          const key = dName.toLowerCase().trim();
+          const indexed = spatialFeatureIndex.get(key);
+          if (indexed) matchingLayers.push(indexed.layer);
+
+          html += `
+            <div class="result-item" onclick="zoomToQueryResult('${key}')">
+              <div>
+                <strong>${dName}</strong>
+                <div style="font-size:10px;color:var(--text-muted);">${sName}</div>
+              </div>
+              <span class="result-tag">Idx: ${dens}</span>
+            </div>
+          `;
+        });
+
+        listEl.innerHTML = html;
+
+        // Highlight query matching features on map
+        layerStores.l2.eachLayer(l => {
+          if (matchingLayers.includes(l)) {
+            l.setStyle({ fillOpacity: 0.7, opacity: 1.0, weight: 1.8 });
+          } else {
+            l.setStyle({ fillOpacity: 0.05, opacity: 0.15, weight: 0.3 });
+          }
+        });
+
+        if (matchingLayers.length > 0) {
+          const grp = L.featureGroup(matchingLayers);
+          map.fitBounds(grp.getBounds(), { padding: [30, 30] });
+        }
+
+      } catch (err) {
+        console.error('Query execution error:', err);
+      }
+    };
+
+    window.zoomToQueryResult = function(key) {
+      const item = spatialFeatureIndex.get(key);
+      if (item) isolateAndInspectFeature(item.layer, item.feature);
+    };
+
+    window.resetQueryForm = function() {
+      document.getElementById('query-keyword').value = '';
+      document.getElementById('query-min-density').value = '';
+      document.getElementById('query-max-density').value = '';
+      document.getElementById('query-results-list').innerHTML = '<div class="result-item" style="color:var(--text-muted);">Execute a spatial query to view matching features.</div>';
+      document.getElementById('query-results-count').textContent = 'Query Results (0)';
+      resetFeatureStyling();
+    };
+
+    /* =========================================================================
+       7. TOOLBAR NAVIGATION ACTIONS
+       ========================================================================= */
+    window.resetNorthOrientation = function() {
+      map.setView([20.5937, 78.9629], 5);
+      resetFeatureStyling();
+    };
+
+    window.fitFullExtent = function() {
+      if (layerStores.l2.getLayers().length > 0) {
+        map.fitBounds(layerStores.l2.getBounds(), { padding: [30, 30] });
+      } else {
+        map.setView([20.5937, 78.9629], 5);
+      }
+    };
+
+    // Layer Toggle Listeners
+    document.getElementById('toggle-l0').addEventListener('change', (e) => {
+      e.target.checked ? map.addLayer(layerStores.l0) : map.removeLayer(layerStores.l0);
+    });
+    document.getElementById('toggle-l1').addEventListener('change', (e) => {
+      e.target.checked ? map.addLayer(layerStores.l1) : map.removeLayer(layerStores.l1);
+    });
+    document.getElementById('toggle-l2').addEventListener('change', (e) => {
+      e.target.checked ? map.addLayer(layerStores.l2) : map.removeLayer(layerStores.l2);
+    });
+    document.getElementById('toggle-heat').addEventListener('change', (e) => {
+      e.target.checked ? map.addLayer(layerStores.heat) : map.removeLayer(layerStores.heat);
+    });
+    document.getElementById('toggle-clusters').addEventListener('change', (e) => {
+      e.target.checked ? map.addLayer(layerStores.clusters) : map.removeLayer(layerStores.clusters);
+    });
+
+    // Run Initialization
+    window.addEventListener('DOMContentLoaded', syncMapData);
+  </script>
 </body>
 </html>
